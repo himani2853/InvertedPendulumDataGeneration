@@ -1,5 +1,6 @@
 import pandas as pd
-from sdv.tabular import CTGAN
+# from sdv.tabular import CTGAN
+from ctgan import CTGAN
 import os
 
 # Import your plotting functions from the new utility file
