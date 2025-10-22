@@ -122,7 +122,7 @@ def analyze_pendulum_data(num_episodes, filepath):
     plt.axhline(0, color='grey', lw=0.5)
     plt.axvline(0, color='grey', lw=0.5)
     plt.grid(True)
-    plt.savefig(f'./plots/phase_plot_{num_episodes}.png')
+    plt.savefig(f'../plots/phase_plot_{num_episodes}.png')
     print(f"✅ Saved 'phase_plot_{num_episodes}.png'")
 
 
