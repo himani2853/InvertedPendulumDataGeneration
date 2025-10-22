@@ -161,6 +161,7 @@ def generate_data_with_trained_agent(env, model, num_episodes=50):
             
             # The action from model.predict is a numpy array, so we use it directly
             collected_data.append([
+                i,
                 observation[0], observation[1], observation[2], observation[3],
                 action[0], reward,
                 next_observation[0], next_observation[1], next_observation[2], next_observation[3],
@@ -170,6 +171,7 @@ def generate_data_with_trained_agent(env, model, num_episodes=50):
 
     # Create a Pandas DataFrame for easier analysis
     columns = [
+        'episode_id',
         'cart_position', 'pole_angle', 'cart_velocity', 'pole_angular_velocity',
         'action', 'reward',
         'next_cart_position', 'next_pole_angle', 'next_cart_velocity', 'next_pole_angular_velocity',
