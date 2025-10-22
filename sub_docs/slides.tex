@@ -1,0 +1,961 @@
+\begin{frame}{Problem setup and design requirements}
+\protect\phantomsection\label{problem-setup-and-design-requirements}
+\begin{block}{Problem Understanding}
+\protect\phantomsection\label{problem-understanding}
+The system consists of an inverted pendulum mounted to a motorized cart.
+
+\textbf{Features of this system:}
+
+\begin{enumerate}
+\item
+  It is unstable without control, i.e., the pendulum will simply fall
+  over if the cart isn't moved to balance it.
+\item
+  The dynamics of the system are nonlinear.
+\end{enumerate}
+
+\textbf{Objective:}
+
+The objective of the control system is to balance the inverted pendulum
+by applying a
+
+force to the cart that the pendulum is attached to.
+
+\textbf{Assumption:}
+
+We consider a two-dimensional problem where the pendulum is constrained
+to move in
+
+the vertical plane. For this system:
+
+\begin{itemize}
+\item
+  The control input is the force \(F\) that moves the cart horizontally.
+\item
+  The outputs are the angular position of the pendulum \(\theta\) and
+  the horizontal position of the cart \(x\).
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth,height=\textheight,keepaspectratio]{plots/system.png}
+\caption{Inverted Pendulum}\label{fig:histogram}
+\end{figure}
+\end{block}
+
+\begin{block}{System Parameters}
+\protect\phantomsection\label{system-parameters}
+For this example, let's assume the following quantities:
+
+\begin{itemize}
+\item
+  \(M\) Mass of the cart \(0.5 \, \text{kg}\)
+\item
+  \(m\) Mass of the pendulum \(0.2 \, \text{kg}\)
+\item
+  \(b\) Coefficient of friction for cart \(0.1 \, \text{N/m/sec}\)
+\item
+  \(l\) Length to pendulum center of mass \(0.3 \, \text{m}\)
+\item
+  \(I\) Mass moment of inertia of the pendulum
+  \(0.006 \, \text{kg}\cdot\text{m}^2\)
+\item
+  \(F\) Force applied to the cart
+\item
+  \(x\) Cart position coordinate
+\item
+  \(\theta\) Pendulum angle from vertical (down)
+\end{itemize}
+\end{block}
+
+\begin{block}{Design Requirements}
+\protect\phantomsection\label{design-requirements}
+We will design a controller to restore the pendulum to a vertically
+upward position after it has experienced an impulsive ``bump'' to the
+cart. Specifically, the design criteria are that the pendulum return to
+its upright position within 5 seconds and that the pendulum never move
+more than 0.05 radians away from vertical after being disturbed by an
+impulse of magnitude \(1 \, \text{Nsec}\). The pendulum will initially
+begin in the vertically upward equilibrium, \(\theta = \pi\).
+
+\begin{block}{SISO Design Requirements}
+\protect\phantomsection\label{siso-design-requirements}
+\begin{itemize}
+\item
+  Settling time for \(\theta\) of less than 5 seconds
+\item
+  Pendulum angle \(\theta\) never more than \(0.05\) radians from the
+  vertical
+\end{itemize}
+
+In our case, the inverted pendulum system is single-input, multi-output
+(SIMO). Therefore, for the state-space section of the inverted pendulum,
+we will attempt to control both the pendulum's angle and the cart's
+position.
+
+For this example, We will command a 0.2-meter step in the cart's desired
+position.
+\end{block}
+
+\begin{block}{State-Space Design Requirements}
+\protect\phantomsection\label{state-space-design-requirements}
+\begin{itemize}
+\item
+  Settling time for \(x\) and \(\theta\) of less than 5 seconds
+\item
+  Rise time for \(x\) of less than 0.5 seconds
+\item
+  Pendulum angle \(\theta\) never more than \(20^{\circ}\) (\(0.35\)
+  radians) from the vertical
+\item
+  Steady-state error of less than 2\% for \(x\) and \(\theta\)
+\end{itemize}
+\end{block}
+\end{block}
+\end{frame}
+
+\begin{frame}{Force analysis and system equations}
+\protect\phantomsection\label{force-analysis-and-system-equations}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.4\linewidth,height=\textheight,keepaspectratio]{plots/forces.png}
+\caption{Forces on Inverted Pendulum}\label{fig:histogram}
+\end{figure}
+
+\begin{block}{Equations of Motion}
+\protect\phantomsection\label{equations-of-motion}
+\begin{block}{Pendulum}
+\protect\phantomsection\label{pendulum}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.2\linewidth,height=\textheight,keepaspectratio]{plots/pendulum.png}
+\caption{Pendulum}\label{fig:histogram}
+\end{figure}
+
+The coordinates of the center of mass are given by: \begin{equation}
+(x_c, y_c) \equiv \left( x + l \sin \theta, \, -l \cos \theta \right)
+\end{equation}
+
+Velocities: \begin{equation}
+(v_x, v_y) \equiv \left( \dot{x} + l \cos \theta \, \dot{\theta}, \; l \sin \theta \, \dot{\theta} \right)
+\end{equation}
+
+Accelerations: \begin{equation}
+(a_x, a_y) = \left( \ddot{x} - l \sin \theta \, \dot{\theta}^2 + l \cos \theta \, \ddot{\theta}, \;
+l \cos \theta \, \dot{\theta}^2 + l \sin \theta \, \ddot{\theta} \right)
+\end{equation}
+
+Force equations for the pendulum: \begin{align}
+N &= m \ddot{x} \\
+P - mg &= m \ddot{y}
+\end{align}
+
+Substituting accelerations: \begin{align}
+N &= m \left( \ddot{x} - l \sin \theta \, \dot{\theta}^2 + l \cos \theta \, \ddot{\theta} \right) \\
+P - mg &= m \left( l \cos \theta \, \dot{\theta}^2 + l \sin \theta \, \ddot{\theta} \right)
+\end{align}
+\end{block}
+
+\begin{block}{Cart}
+\protect\phantomsection\label{cart}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.3\linewidth,height=\textheight,keepaspectratio]{plots/cart.png}
+\caption{Cart}\label{fig:histogram}
+\end{figure}
+
+Force balance on the cart: \begin{equation}
+F - N - b \ddot{x} = M \ddot{x}
+\end{equation}
+
+Substituting \(N\): \begin{equation}
+M \ddot{x} = F - b \ddot{x} - m \left( \ddot{x} - l \sin \dot{\theta} \, \dot{\theta}^2 + l \cos \theta \, \ddot{\theta} \right)
+\end{equation}
+
+Rearranging: \begin{equation}
+(M + m) \ddot{x} + b \ddot{x} = F + m \left( l \sin \theta \, \dot{\theta}^2 - l \cos \theta \, \ddot{\theta} \right)
+\end{equation}
+
+Thus, the final cart equation is: \begin{equation}
+F = (M + m) \ddot{x} + b \dot{x} + m \left( l \cos \theta \, \ddot{\theta} - l \sin \theta \, \dot{\theta}^2 \right)
+\label{eq:cart}
+\end{equation}
+\end{block}
+
+\begin{block}{Rotation (Moment) Equation}
+\protect\phantomsection\label{rotation-moment-equation}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.3\linewidth,height=\textheight,keepaspectratio]{plots/rotation.png}
+\caption{Rotation Forces}\label{fig:histogram}
+\end{figure}
+
+According to Newton--Euler formulation:
+
+\begin{equation}
+\text{Torque} = \text{rate of change of angular momentum about pivot}
+\end{equation}
+
+Thus, the torque balance is: \begin{equation}
+\sum \tau_{\text{pivot}} = I_p \ddot{\theta}
+\end{equation}
+
+where the moment of inertia about the pivot is obtained using the
+parallel axis theorem: \begin{equation}
+I_p = I + m l^2
+\end{equation}
+
+Torque balance about the pivot: \begin{equation}
+P \sin \theta + N \cos \theta - mg \sin \theta 
+= m l \ddot{\theta} + m \ddot{x} \cos \theta
+\end{equation}
+
+Moment about the center of mass (COM): \begin{equation}
+-(P \sin \theta) l - (N \cos \theta) l = I \ddot{\theta}
+\end{equation}
+
+Combining both and eliminating \(P, N\): \begin{equation}
+- m g l \sin \theta = m l \ddot{\theta} + m \ddot{x} l \cos \theta + I \ddot{\theta}
+\end{equation}
+
+Finally, the compact form is: \begin{equation}
+\boxed{ \left( I + m l^2 \right) \ddot{\theta} + m g l \sin \theta 
+= - m \ddot{x} \, (l \cos \theta) }
+\end{equation}
+\end{block}
+\end{block}
+
+\begin{block}{Linearization of the System}
+\protect\phantomsection\label{linearization-of-the-system}
+Since the analysis and control design techniques are only be done here
+for linear systems, this set of equations needs to be linearized. About
+the vertically upward equilibrium position, \(\theta = \pi\), and
+assuming that the system stays within a small neighborhood of this
+equilibrium, which is valid since deviation less than \(20^\circ\) from
+the vertically upward position is desirable.
+
+Let \(\phi\) represent the deviation of the pendulum's position from
+equilibrium, that is, \(\theta = \pi + \phi\). Again presuming a small
+deviation (\(\phi\)) from equilibrium, we can use the following small
+angle approximations of the nonlinear functions in our system equations:
+
+\begin{equation}
+\cos \theta = \cos(\pi + \phi) \approx -1
+\end{equation}
+
+\begin{equation}
+\sin \theta = \sin(\pi + \phi) \approx -\phi
+\end{equation}
+
+\begin{equation}
+\dot{\theta}^2 = \dot{\phi}^2 \approx 0
+\end{equation}
+
+After substituting the above approximations into our nonlinear governing
+equations, we arrive at the two linearized equations of motion. Note
+\(u\) has been substituted for the input \(F\).
+
+\begin{equation}
+(I+ml^2)\ddot{\phi} - mgl\phi = ml\ddot{x}
+\end{equation}
+
+\begin{equation}
+(M+m)\ddot{x} + b\dot{x} - ml\ddot{\phi} = u
+\end{equation}
+\end{block}
+
+\begin{block}{Transfer Function}
+\protect\phantomsection\label{transfer-function}
+To obtain the transfer functions, we must first take the Laplace
+transform of the system equations assuming zero initial conditions.
+
+\begin{equation}
+(I+ml^2)\Phi(s)s^2 - mgl\Phi(s) = mlX(s)s^2
+\end{equation}
+
+\begin{equation}
+(M+m)X(s)s^2 + bX(s)s - ml\Phi(s)s^2 = U(s)
+\end{equation}
+
+Recall that a transfer function represents the relationship between a
+single input and a single output at a time. To find our first transfer
+function for the output \(\Phi(s)\) and an input of \(U(s)\) we need to
+eliminate \(X(s)\) from the above equations. Solve the first equation
+for \(X(s)\):
+
+\begin{equation}
+X(s) = \left[\frac{I+ml^2}{ml} - \frac{g}{s^2}\right]\Phi(s)
+\end{equation}
+
+Then substitute the above into the second equation:
+
+\begin{equation}
+(M+m)\left[\frac{I+ml^2}{ml} - \frac{g}{s^2}\right]\Phi(s)s^2 
++ b\left[\frac{I+ml^2}{ml} - \frac{g}{s^2}\right]\Phi(s)s 
+- ml\Phi(s)s^2 = U(s)
+\end{equation}
+
+Rearranging, the transfer function is then the following:
+
+\begin{equation}
+\frac{\Phi(s)}{U(s)} = \frac{\tfrac{ml}{q}s^2}{s^4 + \tfrac{b(I+ml^2)}{q}s^3 - \tfrac{(M+m)mgl}{q}s^2 - \tfrac{bmgl}{q}s}
+\end{equation}
+
+where,
+
+\begin{equation}
+q = \big[(M+m)(I+ml^2) - (ml)^2\big]
+\end{equation}
+
+From the transfer function above it can be seen that there is both a
+pole and a zero at the origin. These can be canceled and the transfer
+function becomes the following:
+
+\begin{equation}
+P_{pend}(s) = \frac{\Phi(s)}{U(s)} = 
+\frac{\tfrac{ml}{q}s}{s^3 + \tfrac{b(I+ml^2)}{q}s^2 - \tfrac{(M+m)mgl}{q}s - \tfrac{bmgl}{q}}
+\qquad \left[\frac{\text{rad}}{\text{N}}\right]
+\end{equation}
+
+Second, the transfer function with the cart position \(X(s)\) as the
+output can be derived in a similar manner to arrive at the following:
+
+\begin{equation}
+P_{cart}(s) = \frac{X(s)}{U(s)} = 
+\frac{ \tfrac{ (I+ml^2)s^2 - gml } {q}}
+{s^4 + \tfrac{b(I+ml^2)}{q}s^3 - \tfrac{(M+m)mgl}{q}s^2 - \tfrac{bmgl}{q}s}
+\qquad \left[\frac{\text{m}}{\text{N}}\right]
+\end{equation}
+\end{block}
+
+\begin{block}{State-Space Representation}
+\protect\phantomsection\label{state-space-representation}
+The linearized equations of motion from above can also be represented in
+state-space form .
+
+\begin{equation}
+\begin{bmatrix}
+  \dot{x}\\
+  \ddot{x}\\
+  \dot{\phi}\\
+  \ddot{\phi}
+\end{bmatrix}
+=
+\begin{bmatrix}
+  0 & 1 & 0 & 0 \\
+  0 & \tfrac{-(I+ml^2)b}{I(M+m)+Mml^2} & \tfrac{m^2gl^2}{I(M+m)+Mml^2} & 0 \\
+  0 & 0 & 0 & 1 \\
+  0 & \tfrac{-mlb}{I(M+m)+Mml^2} & \tfrac{mgl(M+m)}{I(M+m)+Mml^2} & 0
+\end{bmatrix}
+\begin{bmatrix}
+  x \\
+  \dot{x} \\
+  \phi \\
+  \dot{\phi}
+\end{bmatrix}
++
+\begin{bmatrix}
+  0 \\
+  \tfrac{I+ml^2}{I(M+m)+Mml^2} \\
+  0 \\
+  \tfrac{ml}{I(M+m)+Mml^2}
+\end{bmatrix} u
+\end{equation}
+
+\begin{equation}
+\mathbf{y} =
+\begin{bmatrix}
+  1 & 0 & 0 & 0 \\
+  0 & 0 & 1 & 0
+\end{bmatrix}
+\begin{bmatrix}
+  x \\
+  \dot{x} \\
+  \phi \\
+  \dot{\phi}
+\end{bmatrix}
++
+\begin{bmatrix}
+  0 \\
+  0
+\end{bmatrix} u
+\end{equation}
+
+The \(C\) matrix has 2 rows because both the cart's position and the
+pendulum's position are part of the output. Specifically, the cart's
+position is the first element of the output \(\mathbf{y}\) and the
+pendulum's deviation from its equilibrium position is the second element
+of \(\mathbf{y}\).
+\end{block}
+\end{frame}
+
+\begin{frame}{MATLAB representation}
+\protect\phantomsection\label{matlab-representation}
+\begin{block}{Tranfer Function}
+\protect\phantomsection\label{tranfer-function}
+We can represent the transfer functions derived above for the inverted
+pendulum system within MATLAB employing the following commands.
+
+\[\text{From input } u \text{ to output } x:\] \[P_{cart}(s) = 
+\frac{4.182 \times 10^{-6} s^{2} - 1.025 \times 10^{-4}}
+     {2.3 \times 10^{-6} s^{4} + 4.182 \times 10^{-7} s^{3} - 7.172 \times 10^{-5} s^{2} - 1.025 \times 10^{-5} s}\]
+
+\[\text{From input } u \text{ to output } \phi:\] \[P_{pend}(s) =
+\frac{1.045 \times 10^{-5} s}
+     {2.3 \times 10^{-6} s^{3} + 4.182 \times 10^{-7} s^{2} - 7.172 \times 10^{-5} s - 1.025 \times 10^{-5}}\]
+
+\[\text{Continuous-time transfer function.}\]
+\end{block}
+
+\begin{block}{State -Space}
+\protect\phantomsection\label{state--space}
+We can also represent the system using the state-space equations. The
+following additional MATLAB commands create a state-space model of the
+inverted pendulum and produce the output shown below when run in the
+MATLAB command window.
+
+\begin{equation}
+A = 
+\begin{bmatrix}
+0      & 1       & 0     & 0 \\
+0      & -0.1818 & 2.673 & 0 \\
+0      & 0       & 0     & 1 \\
+0      & -0.4545 & 31.18 & 0
+\end{bmatrix}, \quad
+B =
+\begin{bmatrix}
+0 \\ 1.818 \\ 0 \\ 4.545
+\end{bmatrix},
+\end{equation}
+
+\begin{equation}
+C =
+\begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & 0 & 1 & 0
+\end{bmatrix}, \quad
+D =
+\begin{bmatrix}
+0 \\ 0
+\end{bmatrix}
+\end{equation}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Data Generation Analysis using Gymnasium}
+\protect\phantomsection\label{data-generation-analysis-using-gymnasium}
+This work uses the \texttt{InvertedPendulum-v5} environment from the
+\texttt{Gymnasium} library, which is a MuJoCo-based environment. The
+task is to balance an inverted pendulum on a cart by applying horizontal
+forces.
+
+\begin{block}{Import}
+\protect\phantomsection\label{import}
+\begin{verbatim}
+import gymnasium as gym
+env = gym.make("InvertedPendulum-v5")
+\end{verbatim}
+\end{block}
+
+\begin{block}{Action Space}
+\protect\phantomsection\label{action-space}
+The action space is continuous and represented as:
+\[\text{Box}([-3.0], [3.0], (1,), \texttt{float32})\]
+
+The agent takes a one-dimensional continuous action (force applied to
+the cart).
+
+\begin{longtable}[]{@{}ccccccc@{}}
+\caption{Action space specification of
+InvertedPendulum-v5.}\tabularnewline
+\toprule\noalign{}
+Num & Action & Control Min & Control Max & Name & Joint & Type (Unit) \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Num & Action & Control Min & Control Max & Name & Joint & Type (Unit) \\
+\midrule\noalign{}
+\endhead
+0 & Force on cart & -3 & 3 & slider & slide & Force (N) \\
+\bottomrule\noalign{}
+\end{longtable}
+\end{block}
+
+\begin{block}{Observation Space}
+\protect\phantomsection\label{observation-space}
+The observation space is a 4-dimensional vector:
+\[\text{Box}(-\infty, \infty, (4,), \texttt{float64})\]
+
+It consists of cart position/velocity and pole angle/angular velocity.
+
+\begin{longtable}[]{@{}ccccccc@{}}
+\caption{Observation space specification of
+InvertedPendulum-v5.}\tabularnewline
+\toprule\noalign{}
+Num & Observation & Min & Max & Name & Joint & Type (Unit) \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Num & Observation & Min & Max & Name & Joint & Type (Unit) \\
+\midrule\noalign{}
+\endhead
+0 & Cart position & \(-\infty\) & \(\infty\) & slider & slide & position
+(m) \\
+1 & Pole angle & \(-\infty\) & \(\infty\) & hinge & hinge & angle
+(rad) \\
+2 & Cart velocity & \(-\infty\) & \(\infty\) & slider & slide & velocity
+(m/s) \\
+3 & Pole angular velocity & \(-\infty\) & \(\infty\) & hinge & hinge &
+angular velocity (rad/s) \\
+\bottomrule\noalign{}
+\end{longtable}
+\end{block}
+
+\begin{block}{Rewards}
+\protect\phantomsection\label{rewards}
+A reward of \(+1\) is given for each timestep that the pole remains
+upright (within an angle limit).
+\end{block}
+
+\begin{block}{Starting State}
+\protect\phantomsection\label{starting-state}
+The initial state (position and velocity) is sampled from a multivariate
+uniform continuous distribution, perturbed by random noise.
+\end{block}
+
+\begin{block}{Episode End}
+\protect\phantomsection\label{episode-end}
+\begin{itemize}
+\item
+  \textbf{Termination:} Episode terminates if:
+
+  \begin{itemize}
+  \item
+    Any state value is non-finite.
+  \item
+    The absolute pole angle \(|\theta| > 0.2\) radians.
+  \end{itemize}
+\item
+  \textbf{Truncation:} Default maximum of 1000 timesteps.
+\end{itemize}
+\end{block}
+
+\begin{block}{Data Generation Code}
+\protect\phantomsection\label{data-generation-code}
+The Python code generates data from the \texttt{InvertedPendulum-v5}
+environment using Gymnasium. It collects state transitions, actions, and
+rewards for further analysis.
+
+Here we are considering the agent to take completely random actions:
+
+\textbf{Main goal:} The script is for \textbf{generating datasets} the
+Inverted Pendulum system. It runs the simulation for 50 episodes and
+saves the detailed step-by-step results of each run into separate
+\texttt{.csv} files. These datasets serve as a \textbf{baseline
+performance} for a random agent, which can later be used to evaluate the
+performance of a ``smart'' agent.
+
+\begin{block}{How the Code Works}
+\protect\phantomsection\label{how-the-code-works}
+The script simulates an inverted pendulum by interacting with a
+\texttt{gym} environment and collecting data. Its workflow is as
+follows:
+
+\begin{enumerate}
+\item
+  \textbf{Environment Setup:} The environment is created using
+  \texttt{env\ =\ gym.make(...)} and initialized with
+  \texttt{env.reset()}.
+\item
+  \textbf{Episode Loop:} For each episode, the pendulum is simulated
+  until it either falls (\texttt{terminated}) or the time limit is
+  reached (\texttt{truncated}).
+\item
+  \textbf{Step Loop:} Within each episode, random actions are generated
+  (\texttt{env.action\_space.sample()}) and applied
+  (\texttt{env.step(action)}). The resulting next state, reward, and
+  episode status are returned.
+\item
+  \textbf{Data Collection:} At each step, the current state, chosen
+  action, reward, next state, and termination flag are recorded in
+  \texttt{collected\_data}. The current observation is updated
+  accordingly.
+\item
+  \textbf{Cleanup:} After all episodes, the environment is closed using
+  \texttt{env.close()}.
+\end{enumerate}
+\end{block}
+\end{block}
+
+\begin{block}{Analysis of Simulation Plots}
+\protect\phantomsection\label{analysis-of-simulation-plots}
+The following plots were generated for (\(N = 50\)) numbers of episodes
+. Each plot provides a different perspective on the behavior of the
+inverted pendulum under random actions.
+
+\begin{block}{Histogram of Episode Durations}
+\protect\phantomsection\label{histogram-of-episode-durations}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/episode_durations_histogram_50.png}
+\caption{Histogram of episode durations for
+\(N=50\).}\label{fig:histogram}
+\end{figure}
+
+This plot serves as the main performance indicator, showing how
+successful the random agent was at balancing the pole.
+
+\begin{itemize}
+\item
+  \textbf{X-axis}: Episode duration (number of steps).
+\item
+  \textbf{Y-axis}: Frequency of episodes with that duration.
+\item
+  \textbf{Interpretation}: For a random agent, the distribution is
+  typically skewed to the left, meaning most episodes are very short. A
+  few ``lucky'' runs may last longer, forming a long right tail. With
+  larger \(N\), the histogram gives a more reliable picture of
+  performance.
+\item
+  \textbf{Insight:} This confirms that the agent's performance is
+  consistently poor, failing almost immediately in most attempts.
+\end{itemize}
+\end{block}
+
+\begin{block}{Phase Plot: Pole Angle vs. Angular Velocity}
+\protect\phantomsection\label{phase-plot-pole-angle-vs.-angular-velocity}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/phase_plot_50.png}
+\caption{Phase plot: Pole angle vs. angular velocity.}\label{fig:phase}
+\end{figure}
+
+This phase-space plot captures the underlying physical dynamics of the
+pendulum.
+
+\begin{itemize}
+\item
+  \textbf{X-axis}: Pole angle (radians), where \(0\) is upright.
+\item
+  \textbf{Y-axis}: Angular velocity of the pole (rad/s).
+\item
+  \textbf{Interpretation}: Each point represents the system state at a
+  particular timestep. The goal state is \((0,0)\), meaning upright and
+  motionless. For a random policy, the points typically spread outward
+  from the center, reflecting that once the pole starts to fall, its
+  angular velocity grows quickly, leading to failure.
+\item
+  \textbf{Insight:} This illustrates the inherent instability of the
+  inverted pendulum. Random actions cannot restore the system state back
+  toward the stable center.
+\end{itemize}
+\end{block}
+
+\begin{block}{Time Series of the Longest Episode}
+\protect\phantomsection\label{time-series-of-the-longest-episode}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/longest_episode_timeseries_50.png}
+\caption{Time series of the longest episode.}\label{fig:time_series}
+\end{figure}
+
+This plot highlights the trajectory of the \emph{most successful}
+episode (the one who succeeded with the maximum number of timesteps
+without failing).
+
+\begin{itemize}
+\item
+  \textbf{X-axis}: Timestep within the episode.
+\item
+  \textbf{Y-axis}: Values of system variables (cart position, pole
+  angle, etc.).
+\item
+  \textbf{Interpretation}: The plot shows how state variables evolve
+  over time, alongside the (random) control actions. It gives insight
+  into how actions affect the system dynamics, even if the control
+  policy is not optimal.
+\item
+  \textbf{Insight:} The pole angle stays close to zero for a short
+  period before drifting too far, causing the episode to end. The action
+  signal is erratic, even in this ``successful'' run. This shows that
+  the agent has no control strategy---only chance kept the system
+  balanced briefly.
+\end{itemize}
+\end{block}
+
+\begin{block}{Reward per Episode}
+\protect\phantomsection\label{reward-per-episode}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/rewards_per_episode_50.png}
+\caption{Total reward earned in each episode.}\label{fig:reward}
+\end{figure}
+
+This bar chart summarizes the total reward earned in each episode.
+
+\begin{itemize}
+\item
+  \textbf{X-axis}: Episode index.
+\item
+  \textbf{Y-axis}: Total reward (equivalent to episode duration).
+\item
+  \textbf{Interpretation}: With random actions, episode rewards
+  fluctuate without any trend. Most bars are short (early failures),
+  with a few taller bars (lucky long runs). A red dashed line indicates
+  the average reward across episodes, which remains low for a random
+  agent.
+\item
+  \textbf{Insight:} The reward (i.e., duration) fluctuates randomly
+  across the \(50\) episodes, with no upward trend. The average reward
+  (red dashed line) is very low. This reinforces that the agent is not
+  learning or improving. Its success is erratic and depends entirely on
+  luck.
+\end{itemize}
+\end{block}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Conclusion and Improvements}
+\protect\phantomsection\label{conclusion-and-improvements}
+\begin{block}{Conclusion about Random Agent}
+\protect\phantomsection\label{conclusion-about-random-agent}
+The four plots paint a clear and consistent picture: a random action
+strategy is completely inadequate for solving the Inverted Pendulum
+problem. The agent exhibits no learning or strategic behavior, and its
+performance relies purely on chance. These results establish a
+quantitative baseline for failure, against which more advanced control
+and reinforcement learning approaches can be compared.
+\end{block}
+
+\begin{block}{Improvements}
+\protect\phantomsection\label{improvements}
+Here we outline one of the potential improvements that can be employed
+to achieve meaningful control of the Inverted Pendulum.
+
+The current random agent provides a baseline, but it cannot learn or
+adapt. The following improvements describe how to create a more
+intelligent agent that learns to balance the Inverted Pendulum
+effectively.
+
+\begin{block}{Implement a Reinforcement Learning Algorithm}
+\protect\phantomsection\label{implement-a-reinforcement-learning-algorithm}
+The fundamental change is to replace the random action selection with a
+learning algorithm. Instead of guessing, the agent will have a
+\emph{policy} that it improves over time. For the Inverted Pendulum
+problem, the recommended approach is to use a Reinforcement Learning
+(RL) algorithm, which is \textbf{Proximal Policy Optimization (PPO)} in
+this case.
+
+PPO is a powerful, stable, and widely used RL algorithm. It works
+exceptionally well for control problems like the Inverted Pendulum and
+is a great starting point to achieve strong results.
+\end{block}
+
+\begin{block}{Use a Reinforcement Learning Library}
+\protect\phantomsection\label{use-a-reinforcement-learning-library}
+Implementing PPO from scratch is complex. Hence we are using a pre-built
+library that handles the low-level details, \textbf{Library: Stable
+Baselines3} which integrates seamlessly with Gymnasium environments and
+simplifies training a powerful agent.
+\end{block}
+
+\begin{block}{Train the Agent}
+\protect\phantomsection\label{train-the-agent}
+\begin{enumerate}
+\item
+  \textbf{Training Phase} In this phase, the agent interacts with the
+  environment to learn a policy. The Stable Baselines3 library handles
+  the underlying RL loop:
+
+  \begin{itemize}
+  \item
+    The agent interacts with the environment to collect experience.
+  \item
+    It uses that experience to update its policy.
+  \item
+    This process repeats for a specified number of steps (e.g., 10k,
+    20k), progressively improving the agent's ability to balance the
+    pole.
+  \end{itemize}
+\item
+  \textbf{Evaluation Phase}
+
+  After training, the saved trained model is used to control the
+  environment:
+
+  \begin{itemize}
+  \item
+    Instead of choosing random actions, the trained model predicts the
+    optimal action at each step.
+  \item
+    The agent can now balance the pole for much longer durations, often
+    reaching the full episode limit (e.g., 1,000 steps), demonstrating
+    learned control.
+  \end{itemize}
+\end{enumerate}
+
+By switching from random actions to a PPO-based policy, the agent
+transitions from purely chance-driven behavior to intelligent,
+goal-directed control.
+\end{block}
+\end{block}
+
+\begin{block}{Analysis of Simulation Plots}
+\protect\phantomsection\label{analysis-of-simulation-plots-1}
+The following plots were generated for (\(N=50\)) numbers of episodes.
+Each plot provides a different perspective on the behavior of the
+inverted pendulum under random actions.
+
+\begin{block}{Histogram of Episode Durations}
+\protect\phantomsection\label{histogram-of-episode-durations-1}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/trained_episode_durations_histogram_50.png}
+\caption{Histogram of episode durations for
+\(N=50\).}\label{fig:histogram}
+\end{figure}
+
+This plot serves as the main performance indicator, showing how
+successful the random agent was at balancing the pole.
+
+\begin{itemize}
+\item
+  \textbf{Observation:} The histogram of episode durations exhibits a
+  bimodal distribution. A good number of the episodes successfully reach
+  the 1,000-step truncation limit, as indicated by the prominent peak on
+  the far right. However, other cluster of episodes terminate
+  prematurely at various shorter durations.
+\item
+  \textbf{Conclusion:} This distribution signifies a policy that is
+  successful under most tested conditions but is not yet robust enough
+  to generalize to all possible states. The agent has clearly learned
+  the primary stabilization task, but its strategy fails when
+  encountering certain less-frequently experienced or more challenging
+  state-space regions.
+\end{itemize}
+\end{block}
+
+\begin{block}{Phase Plot: Pole Angle vs. Angular Velocity}
+\protect\phantomsection\label{phase-plot-pole-angle-vs.-angular-velocity-1}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/trained_phase_plot_50.png}
+\caption{Phase plot: Pole angle vs. angular velocity.}\label{fig:phase}
+\end{figure}
+
+This phase-space plot captures the underlying physical dynamics of the
+pendulum.
+
+\begin{itemize}
+\item
+  \textbf{Observation:} The phase points are tightly clustered around
+  the origin \((0,0)\), very similar to the perfectly trained case.
+\item
+  \textbf{Conclusion:} This indicates that the agent maintains the
+  pendulum in a balanced and stable state for most of the time. The rare
+  failures are too brief to affect this plot significantly.
+\end{itemize}
+\end{block}
+
+\begin{block}{Time Series of the Longest Episode}
+\protect\phantomsection\label{time-series-of-the-longest-episode-1}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/trained_longest_episode_timeseries_50.png}
+\caption{Time series of the longest episode.}\label{fig:time_series}
+\end{figure}
+
+This plot highlights the trajectory of the \emph{most successful}
+episode.
+
+\begin{itemize}
+\item
+  \textbf{Observation:} The 1000-step run demonstrates that the pole's
+  angle is controlled effectively, with smooth and deliberate actions
+  rather than random movements.
+\item
+  \textbf{Conclusion:} This confirms that the agent has indeed learned
+  the \emph{correct control strategy}. When it succeeds, it does so with
+  skill, not by chance.
+\end{itemize}
+\end{block}
+
+\begin{block}{Reward per Episode}
+\protect\phantomsection\label{reward-per-episode-1}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{plots/trained_rewards_per_episode_50.png}
+\caption{Total reward earned in each episode.}\label{fig:reward}
+\end{figure}
+
+This bar chart summarizes the total reward earned in each episode.
+
+\begin{itemize}
+\item
+  \textbf{Observation:} The bar chart displays the total reward for each
+  of the 50 evaluation episodes. The vast majority of episodes achieve
+  the maximum possible reward of 1000, as shown by the consistently tall
+  bars. However, a small number of episodes terminate prematurely,
+  resulting in lower rewards.
+\item
+  \textbf{Insight:} The agent has successfully learned a highly
+  effective control policy, transitioning from the chaotic,
+  low-performance behavior of a random agent to a skilled, strategic
+  one.
+\end{itemize}
+\end{block}
+\end{block}
+
+\begin{block}{Final Conclusion}
+\protect\phantomsection\label{final-conclusion}
+\begin{itemize}
+\item
+  The agent trained for \(10{,}000\) timesteps demonstrates a
+  fundamentally different and vastly superior mode of operation compared
+  to the baseline random policy.
+\item
+  The random policy is an open-loop strategy, where actions are
+  independent of the system state. This leads to:
+
+  \begin{itemize}
+  \item
+    rapid system divergence,
+  \item
+    uniformly poor performance,
+  \item
+    complete inability to stabilize the pendulum,
+  \item
+    universally short episode durations.
+  \end{itemize}
+\item
+  In contrast, the trained policy is a closed-loop control strategy that
+  maps states to actions effectively. Its advantages include:
+
+  \begin{itemize}
+  \item
+    \textbf{Achieving Stability:} actively drives the system state
+    towards the stable equilibrium point, unlike the random policy which
+    accelerates divergence.
+  \item
+    \textbf{Sustaining Performance:} balances the pendulum up to the
+    maximum time limit in most trials, a feat statistically impossible
+    for a random policy.
+  \item
+    \textbf{Exhibiting Skillful Control:} actions are deliberate and
+    corrective, opposing the system's unstable dynamics, unlike the
+    uncorrelated and ineffective actions of the random policy.
+  \end{itemize}
+\end{itemize}
+
+Furthermore, increasing the training horizon, i.e., the
+\texttt{total\_timesteps}, enhances the
+
+agent's performance. With more training iterations, the agent converges
+to more accurate
+
+policies, yielding greater stability, robustness, and improved control
+strategies compared
+
+to those obtained with fewer training steps.
+\end{block}
+\end{frame}
